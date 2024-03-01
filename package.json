@@ -1,7 +1,7 @@
 {
 	"type": "module",
 	"name": "@oly_op/spotify-web-api",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "auth0-js like implementation for interacting with the Spotify WEB API",
 	"homepage": "https://github.com/olyop/spotify-web-api#readme",
 	"bugs": {
@@ -25,7 +25,7 @@
 	"scripts": {
 		"development": "vite --mode development",
 		"compile": "tsc --project ./tsconfig.compile.json",
-		"clean": "rimraf index.js",
+		"clean": "rimraf dist",
 		"increment-version": "npm version patch --no-git-tag-version",
 		"build": "npm run clean && npm run compile",
 		"prepublishOnly": "npm run increment-version && npm run build",

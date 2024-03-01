@@ -1,15 +1,10 @@
 {
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
-		"module": "AMD",
-		"moduleResolution": "Node",
-		"resolveJsonModule": false,
 		"isolatedModules": false,
 		"noEmit": false,
-		"outFile": "dist/index.js",
-		"declaration": true,
-		"declarationMap": false
+		"outDir": "dist",
+		"declaration": true
 	},
-	"include": ["src"],
-	"exclude": []
+	"include": ["src/*.ts"]
 }

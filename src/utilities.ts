@@ -1,4 +1,4 @@
-import { LOCAL_STORAGE_PKCE_VERIFIER_KEY, PKCE_VERIFIER_POSSIBLE_CHARACTERS } from "./globals";
+import { LOCAL_STORAGE_PKCE_VERIFIER_KEY, PKCE_VERIFIER_POSSIBLE_CHARACTERS } from "./values";
 
 export async function generatePKCEChallenge() {
 	const codeVerifier = generateRandomString(128);

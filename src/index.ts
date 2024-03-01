@@ -1,13 +1,13 @@
-import { LOCAL_STORAGE_TOKEN_KEY } from "./globals";
+import { deleteStoredPKCEVerifier, generatePKCEChallenge, retrieveStoredPKCEVerifierAndDelete } from "./utilities";
 import {
 	AccessToken,
 	AccessTokenResponse,
+	LOCAL_STORAGE_TOKEN_KEY,
 	SpotifyInternalOptions,
 	SpotifyOptions,
 	SpotifyQueryHttpMethod,
 	SpotifyQueryRequestData,
-} from "./types";
-import { deleteStoredPKCEVerifier, generatePKCEChallenge, retrieveStoredPKCEVerifierAndDelete } from "./utilities";
+} from "./values";
 
 export type { SpotifyInternalOptions, SpotifyOptions, SpotifyQueryHttpMethod, SpotifyQueryRequestData };
 

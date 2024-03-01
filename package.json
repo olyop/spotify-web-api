@@ -1,0 +1,72 @@
+{
+	"type": "module",
+	"name": "@oly_op/spotify-web-api",
+	"version": "0.1.1",
+	"description": "auth0-js like implementation for interacting with the Spotify WEB API",
+	"homepage": "https://github.com/olyop/spotify-web-api#readme",
+	"bugs": {
+		"url": "https://github.com/olyop/directory-to-spotify/issues",
+		"email": "oliver.plummer@outlook.com"
+	},
+	"license": "MIT",
+	"author": {
+		"name": "Oliver Plummer",
+		"email": "oliver.plummer@outlook.com",
+		"url": "https://oliverplummer.com.au/"
+	},
+	"files": [
+		"dist"
+	],
+	"main": "dist/index.js",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/olyop/spotify-web-api.git"
+	},
+	"scripts": {
+		"development": "vite --mode development",
+		"compile": "tsc --project ./tsconfig.compile.json",
+		"clean": "rimraf index.js",
+		"increment-version": "npm version patch --no-git-tag-version",
+		"build": "npm run clean && npm run compile",
+		"prepublishOnly": "npm run increment-version && npm run build",
+		"postpublish": "git add -A && git commit -m 'Publish' && git push"
+	},
+	"devDependencies": {
+		"@oly_op/cspell-dict": "1.1.9",
+		"@oly_op/eslint-config": "6.7.18",
+		"@oly_op/eslint-config-react": "4.3.3",
+		"@oly_op/prettier-config": "1.8.2",
+		"@oly_op/tsconfig": "1.2.1",
+		"@rollup/plugin-typescript": "11.1.6",
+		"@types/node": "20.11.24",
+		"@types/react": "18.2.61",
+		"@types/react-dom": "18.2.19",
+		"@vitejs/plugin-react-swc": "3.6.0",
+		"autoprefixer": "10.4.17",
+		"npm-check-updates": "16.14.15",
+		"postcss": "8.4.35",
+		"postcss-load-config": "5.0.3",
+		"react": "18.2.0",
+		"react-dom": "18.2.0",
+		"rimraf": "5.0.5",
+		"rollup": "4.12.0",
+		"spotify-api.js": "9.2.5",
+		"tailwindcss": "3.4.1",
+		"vite": "5.1.4",
+		"vite-plugin-checker": "0.6.4"
+	},
+	"overrides": {
+		"eslint-config-airbnb-typescript": {
+			"@typescript-eslint/eslint-plugin": "7.1.0",
+			"@typescript-eslint/parser": "7.1.0"
+		}
+	},
+	"engines": {
+		"node": "21.6.2",
+		"npm": "10.4.0"
+	},
+	"volta": {
+		"node": "21.6.2",
+		"npm": "10.4.0"
+	}
+}

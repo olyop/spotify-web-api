@@ -1,0 +1,11 @@
+{
+	"import": ["@oly_op/cspell-dict/cspell-ext.json"],
+	"ignorePaths": ["node_modules", "dist", "cspell-dictionary.txt"],
+	"dictionaryDefinitions": [
+		{
+			"name": "spotify-api-react",
+			"path": "./cspell-dictionary.txt"
+		}
+	],
+	"dictionaries": ["spotify-api-react"]
+}

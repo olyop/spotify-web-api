@@ -1,0 +1,13 @@
+{
+	"extends": "@oly_op/tsconfig",
+	"compilerOptions": {
+		"isolatedModules": true,
+		"skipLibCheck": true,
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"noEmit": true,
+		"jsx": "react",
+		"jsxFactory": "createElement",
+		"jsxFragmentFactory": "Fragment"
+	}
+}

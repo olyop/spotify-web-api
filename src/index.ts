@@ -1,10 +1,10 @@
 import { LocalStorageProvider } from "./local-storage";
 import {
 	AccessTokenResponse,
-	SpotifyBaseOptions,
-	SpotifyCredentialsOptions,
+	SpotifyAuthorizationCodeOptions,
 	SpotifyHooksOptions,
-	SpotifyInternalOptions,
+	SpotifyOAuthConfiguration,
+	SpotifyOAuthOptions,
 	SpotifyOptions,
 	SpotifyQueryHttpMethod,
 	SpotifyQueryRequestData,
@@ -20,7 +20,7 @@ import {
 import { deletePKCEVerifier, generatePKCEChallenge, retrievePKCEVerifier } from "./utilities";
 
 export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
-	#OPTIONS: SpotifyInternalOptions;
+	#OPTIONS: SpotifyOptions;
 
 	#abortController: AbortController;
 	#storageProvider: StorageProvider | null;
@@ -32,7 +32,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	#error: Error | null;
 
 	constructor(optionsInput: SpotifyOptions) {
-		this.#OPTIONS = this.#toInternalOptions(optionsInput);
+		this.#OPTIONS = optionsInput;
 
 		this.#abortController = new AbortController();
 
@@ -301,25 +301,16 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 
 		this.#OPTIONS.onAuthenticatedChange?.(false);
 	}
-
-	#toInternalOptions({ clientId, redirectUri, scope }: SpotifyOptions) {
-		const internalOptions: SpotifyInternalOptions = {
-			clientId,
-			redirectUri,
-			scope: scope.join(" "),
-		};
-
-		return internalOptions;
-	}
 }
+
+export { LocalStorageProvider };
 
 export type {
 	SpotifyToken,
-	LocalStorageProvider,
 	SpotifyHooksOptions,
-	SpotifyBaseOptions,
-	SpotifyCredentialsOptions,
-	SpotifyInternalOptions,
+	SpotifyAuthorizationCodeOptions,
+	SpotifyOAuthConfiguration,
+	SpotifyOAuthOptions,
 	SpotifyOptions,
 	SpotifyQueryHttpMethod,
 	StorageProvider,

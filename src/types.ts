@@ -23,22 +23,22 @@ export type SpotifyWebApiClientQuery = <T>(
 	data?: SpotifyQueryRequestData,
 ) => Promise<T>;
 
-export interface SpotifyOptions extends SpotifyBaseOptions {
-	scope: string[];
-	authorizationCode: string | null;
+export interface SpotifyOptions extends SpotifyAuthorizationCodeOptions, SpotifyOAuthOptions, SpotifyHooksOptions {
 	storageProvider?: StorageProvider | null;
 }
 
-export interface SpotifyInternalOptions extends SpotifyBaseOptions {
-	scope: string;
+export interface SpotifyAuthorizationCodeOptions {
+	authorizationCode: string | null;
 }
 
-export interface SpotifyBaseOptions extends SpotifyCredentialsOptions, SpotifyHooksOptions {}
+export interface SpotifyOAuthOptions extends SpotifyOAuthConfiguration {
+	token?: SpotifyToken;
+}
 
-export interface SpotifyCredentialsOptions {
+export interface SpotifyOAuthConfiguration {
 	clientId: string;
 	redirectUri: string;
-	token?: SpotifyToken;
+	scope: string;
 }
 
 export interface SpotifyHooksOptions {

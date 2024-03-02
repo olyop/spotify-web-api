@@ -1,23 +1,23 @@
-import { LOCAL_STORAGE_PKCE_VERIFIER_KEY, PKCE_VERIFIER_POSSIBLE_CHARACTERS } from "./values";
+import { PKCE_VERIFIER_POSSIBLE_CHARACTERS, StorageProvider } from "./types";
 
-export async function generatePKCEChallenge() {
+export async function generatePKCEChallenge(storageProvider: StorageProvider) {
 	const codeVerifier = generateRandomString(128);
 
 	const codeChallenge = base64encode(await sha256(codeVerifier));
 
-	localStorage.setItem(LOCAL_STORAGE_PKCE_VERIFIER_KEY, codeVerifier);
+	storageProvider.setItem(storageProvider.keys.pkceVerifier, codeVerifier);
 
 	return codeChallenge;
 }
 
-export function deleteStoredPKCEVerifier() {
-	localStorage.removeItem(LOCAL_STORAGE_PKCE_VERIFIER_KEY);
+export function deletePKCEVerifier(storageProvider: StorageProvider) {
+	storageProvider.removeItem(storageProvider.keys.pkceVerifier);
 }
 
-export function retrieveStoredPKCEVerifierAndDelete() {
-	const codeVerifier = localStorage.getItem(LOCAL_STORAGE_PKCE_VERIFIER_KEY);
+export function retrievePKCEVerifier(storageProvider: StorageProvider) {
+	const codeVerifier = storageProvider.getItem(storageProvider.keys.pkceVerifier);
 
-	deleteStoredPKCEVerifier();
+	deletePKCEVerifier(storageProvider);
 
 	return codeVerifier;
 }

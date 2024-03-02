@@ -1,37 +1,63 @@
-import { deleteStoredPKCEVerifier, generatePKCEChallenge, retrieveStoredPKCEVerifierAndDelete } from "./utilities";
+import { LocalStorageProvider } from "./local-storage";
 import {
-	AccessToken,
 	AccessTokenResponse,
-	LOCAL_STORAGE_TOKEN_KEY,
+	SpotifyBaseOptions,
+	SpotifyCredentialsOptions,
+	SpotifyHooksOptions,
 	SpotifyInternalOptions,
 	SpotifyOptions,
 	SpotifyQueryHttpMethod,
 	SpotifyQueryRequestData,
-} from "./values";
-
-export type { SpotifyInternalOptions, SpotifyOptions, SpotifyQueryHttpMethod, SpotifyQueryRequestData };
+	SpotifyToken,
+	SpotifyWebApiClientInter,
+	SpotifyWebApiClientLogInOut,
+	SpotifyWebApiClientMethods,
+	SpotifyWebApiClientQuery,
+	SpotifyWebApiClientState,
+	StorageProvider,
+	StorageProviderKeys,
+} from "./types";
+import { deletePKCEVerifier, generatePKCEChallenge, retrievePKCEVerifier } from "./utilities";
 
 export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	#OPTIONS: SpotifyInternalOptions;
 
-	#abortController: AbortController = new AbortController();
+	#abortController: AbortController;
+	#storageProvider: StorageProvider | null;
 
 	#codeVerifier: string | null;
 	#authorizationCode: string | null;
-	#token: AccessToken | null;
+	#token: SpotifyToken | null;
 	#isLoading: boolean;
 	#error: Error | null;
 
 	constructor(optionsInput: SpotifyOptions) {
 		this.#OPTIONS = this.#toInternalOptions(optionsInput);
-		this.#codeVerifier = retrieveStoredPKCEVerifierAndDelete();
-		this.#authorizationCode = optionsInput.authorizationCode ?? null;
-		this.#token = SpotifyWebApiClient.#retrieveStoredToken();
+
+		this.#abortController = new AbortController();
+
+		this.#storageProvider = optionsInput.storageProvider === undefined ? new LocalStorageProvider() : null;
+
+		this.#codeVerifier = null;
+		this.#authorizationCode = null;
+		this.#token = null;
 		this.#isLoading = false;
 		this.#error = null;
 
+		if (this.#storageProvider) {
+			this.#codeVerifier = retrievePKCEVerifier(this.#storageProvider);
+			this.#token = SpotifyWebApiClient.#retrieveStoredToken(this.#storageProvider);
+		}
+
+		if (optionsInput.token) {
+			this.#token = optionsInput.token;
+		}
+
 		if (optionsInput.authorizationCode) {
-			void this.#initialRetrieveAccessToken(optionsInput.onAuthenticatedChange);
+			this.#isLoading = true;
+			this.#authorizationCode = optionsInput.authorizationCode;
+
+			void this.#initialRetrieveAccessToken();
 		}
 	}
 
@@ -42,6 +68,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	get isLoading() {
 		return this.#isLoading;
 	}
+
 	set isLoading(isLoading: boolean) {
 		this.#isLoading = isLoading;
 		this.#OPTIONS.onLoadingChange?.(isLoading);
@@ -59,41 +86,31 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		void this.#handleLogin();
 	}
 
-	async #handleLogin() {
-		try {
-			await this.#redirectToAuthCodeFlow(this.#OPTIONS);
-		} finally {
-			this.isLoading = false;
-		}
-	}
-
 	logout() {
 		if (!this.isAuthenticated) throw new Error("Authenticated");
 
 		this.reset();
 
 		this.#deleteToken();
-		deleteStoredPKCEVerifier();
+
+		if (this.#storageProvider) {
+			this.#storageProvider.removeItem(this.#storageProvider.keys.token);
+			deletePKCEVerifier(this.#storageProvider);
+		}
 	}
 
 	reset() {
 		this.#abortController.abort();
 
 		this.#abortController = new AbortController();
-		this.#codeVerifier = retrieveStoredPKCEVerifierAndDelete();
+		this.#codeVerifier = this.#storageProvider ? retrievePKCEVerifier(this.#storageProvider) : null;
 		this.#authorizationCode = null;
-		this.#token = SpotifyWebApiClient.#retrieveStoredToken();
+		this.#token = this.#storageProvider ? SpotifyWebApiClient.#retrieveStoredToken(this.#storageProvider) : null;
 		this.#isLoading = false;
 	}
 
-	async #initialRetrieveAccessToken(onAuthenticatedChange?: (isAuthenticated: boolean) => void) {
-		this.isLoading = true;
-
-		await this.#retrieveAccessToken();
-
-		onAuthenticatedChange?.(true);
-
-		this.isLoading = false;
+	static isAuthenticatedInitial(storageProvider: StorageProvider) {
+		return this.#retrieveStoredToken(storageProvider) !== null;
 	}
 
 	async query<T>(method: SpotifyQueryHttpMethod, path: string, data?: SpotifyQueryRequestData) {
@@ -135,7 +152,52 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		return JSON.parse(text) as T;
 	}
 
-	async #getAccessToken(): Promise<string> {
+	static #retrieveStoredToken(storageProvider: StorageProvider) {
+		const tokenJson = storageProvider.getItem(storageProvider.keys.token);
+
+		if (tokenJson === null) {
+			return null;
+		}
+
+		return JSON.parse(tokenJson) as SpotifyToken;
+	}
+
+	async #handleLogin() {
+		this.isLoading = true;
+
+		try {
+			await this.#redirectToAuthCodeFlow();
+		} finally {
+			this.isLoading = false;
+		}
+	}
+
+	async #redirectToAuthCodeFlow() {
+		if (this.#storageProvider === null) throw new Error("No storage provider found");
+
+		const codeChallenge = await generatePKCEChallenge(this.#storageProvider);
+
+		const url = new URL("https://accounts.spotify.com/authorize");
+
+		url.searchParams.append("client_id", this.#OPTIONS.clientId);
+		url.searchParams.append("response_type", "code");
+		url.searchParams.append("redirect_uri", this.#OPTIONS.redirectUri);
+		url.searchParams.append("scope", this.#OPTIONS.scope);
+		url.searchParams.append("code_challenge_method", "S256");
+		url.searchParams.append("code_challenge", codeChallenge);
+
+		window.location.href = url.toString();
+	}
+
+	async #initialRetrieveAccessToken() {
+		await this.#retrieveAccessToken();
+
+		this.#OPTIONS.onAuthenticatedChange?.(true);
+
+		this.isLoading = false;
+	}
+
+	async #getAccessToken() {
 		let accessToken: string;
 
 		if (this.#token === null) {
@@ -213,7 +275,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 
 		const { access_token, token_type, scope, expires_in, refresh_token } = json;
 
-		const accessToken: AccessToken = {
+		const accessToken: SpotifyToken = {
 			accessToken: access_token,
 			tokenType: token_type,
 			scope,
@@ -224,46 +286,20 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		return accessToken;
 	}
 
-	async #redirectToAuthCodeFlow(options: SpotifyInternalOptions) {
-		const codeChallenge = await generatePKCEChallenge();
-
-		const url = new URL("https://accounts.spotify.com/authorize");
-
-		url.searchParams.append("client_id", options.clientId);
-		url.searchParams.append("response_type", "code");
-		url.searchParams.append("redirect_uri", options.redirectUri);
-		url.searchParams.append("scope", options.scope);
-		url.searchParams.append("code_challenge_method", "S256");
-		url.searchParams.append("code_challenge", codeChallenge);
-
-		window.location.href = url.toString();
-	}
-
-	#setToken(token: AccessToken) {
-		localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, JSON.stringify(token));
-
+	#setToken(token: SpotifyToken) {
 		this.#token = token;
+
+		this.#storageProvider?.setItem(this.#storageProvider.keys.token, JSON.stringify(token));
 
 		this.#OPTIONS.onAuthenticatedChange?.(true);
 	}
 
-	static #retrieveStoredToken() {
-		const tokenJson = localStorage.getItem(LOCAL_STORAGE_TOKEN_KEY);
-
-		if (tokenJson === null) {
-			return null;
-		}
-
-		return JSON.parse(tokenJson) as AccessToken;
-	}
-
-	static isAuthenticatedInitial() {
-		return this.#retrieveStoredToken() !== null;
-	}
-
 	#deleteToken() {
 		this.#token = null;
-		localStorage.removeItem(LOCAL_STORAGE_TOKEN_KEY);
+
+		this.#storageProvider?.removeItem(this.#storageProvider.keys.token);
+
+		this.#OPTIONS.onAuthenticatedChange?.(false);
 	}
 
 	#toInternalOptions({ clientId, redirectUri, scope }: SpotifyOptions) {
@@ -277,25 +313,20 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	}
 }
 
-export type SpotifyWebApiClientQuery = <T>(
-	method: SpotifyQueryHttpMethod,
-	path: string,
-	data?: SpotifyQueryRequestData,
-) => Promise<T>;
-
-export interface SpotifyWebApiClientState {
-	isAuthenticated: boolean;
-	isLoading: boolean;
-	error: Error | null;
-}
-
-export interface SpotifyWebApiClientLogInOut {
-	login: () => void;
-	logout: () => void;
-}
-
-export interface SpotifyWebApiClientMethods extends SpotifyWebApiClientLogInOut {
-	query: SpotifyWebApiClientQuery;
-}
-
-interface SpotifyWebApiClientInter extends SpotifyWebApiClientState, SpotifyWebApiClientMethods {}
+export type {
+	SpotifyToken,
+	LocalStorageProvider,
+	SpotifyHooksOptions,
+	SpotifyBaseOptions,
+	SpotifyCredentialsOptions,
+	SpotifyInternalOptions,
+	SpotifyOptions,
+	SpotifyQueryHttpMethod,
+	StorageProvider,
+	StorageProviderKeys,
+	SpotifyQueryRequestData,
+	SpotifyWebApiClientLogInOut,
+	SpotifyWebApiClientMethods,
+	SpotifyWebApiClientQuery,
+	SpotifyWebApiClientState,
+};

@@ -44,7 +44,7 @@ export interface SpotifyOAuthConfiguration {
 export interface SpotifyHooksOptions {
 	onLoadingChange?: (isLoading: boolean) => void;
 	onAuthenticatedChange?: (isAuthenticated: boolean) => void;
-	onError?: (error: Error) => void;
+	onErrorChange?: (error: Error) => void;
 }
 
 export type SpotifyQueryHttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";

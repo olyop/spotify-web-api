@@ -34,7 +34,8 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 
 		this.#abortController = new AbortController();
 
-		this.#storageProvider = optionsInput.storageProvider === undefined ? new LocalStorageProvider() : null;
+		this.#storageProvider =
+			optionsInput.storageProvider === undefined ? new LocalStorageProvider() : optionsInput.storageProvider;
 
 		this.#token = null;
 		this.#isLoading = false;

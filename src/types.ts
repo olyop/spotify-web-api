@@ -51,10 +51,12 @@ export type SpotifyQueryHttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
 export type SpotifyQueryRequestData = URLSearchParams | Record<string, unknown>;
 
 export interface StorageProvider {
-	keys: StorageProviderKeys;
-	getItem: (key: string) => string | null;
-	setItem: (key: string, value: string) => void;
-	removeItem: (key: string) => void;
+	getToken(): SpotifyToken | null;
+	getPKCEVerifier(): string | null;
+	setToken(token: SpotifyToken): void;
+	setPKCEVerifier(pkceVerifier: string): void;
+	removeToken(): void;
+	removePKCEVerifier(): void;
 }
 
 export interface StorageProviderKeys {

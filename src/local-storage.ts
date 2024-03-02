@@ -1,20 +1,35 @@
-import { StorageProvider } from "./types";
+import { SpotifyToken, StorageProvider } from "./types";
+
+const DEFAULT_STORAGE_KEY_PREFIX = "spotify-web-api";
+const DEFAULT_STORAGE_TOKEN_KEY = `${DEFAULT_STORAGE_KEY_PREFIX}.token`;
+const DEFAULT_STORAGE_PKCE_VERIFIER_KEY = `${DEFAULT_STORAGE_KEY_PREFIX}.pkceverifier`;
 
 export class LocalStorageProvider implements StorageProvider {
-	keys = {
-		token: "spotify-web-api.token",
-		pkceVerifier: "spotify-web-api.pkceverifier",
-	};
+	getToken(): SpotifyToken | null {
+		const tokenJson = localStorage.getItem(DEFAULT_STORAGE_TOKEN_KEY);
 
-	getItem(key: string) {
-		return localStorage.getItem(key);
+		if (tokenJson === null) return null;
+
+		return JSON.parse(tokenJson) as SpotifyToken;
 	}
 
-	setItem(key: string, value: string) {
-		localStorage.setItem(key, value);
+	getPKCEVerifier(): string | null {
+		return localStorage.getItem(DEFAULT_STORAGE_PKCE_VERIFIER_KEY);
 	}
 
-	removeItem(key: string) {
-		localStorage.removeItem(key);
+	setToken(token: SpotifyToken): void {
+		localStorage.setItem(DEFAULT_STORAGE_TOKEN_KEY, JSON.stringify(token));
+	}
+
+	setPKCEVerifier(pkceVerifier: string): void {
+		localStorage.setItem(DEFAULT_STORAGE_PKCE_VERIFIER_KEY, pkceVerifier);
+	}
+
+	removeToken(): void {
+		localStorage.removeItem(DEFAULT_STORAGE_TOKEN_KEY);
+	}
+
+	removePKCEVerifier(): void {
+		localStorage.removeItem(DEFAULT_STORAGE_PKCE_VERIFIER_KEY);
 	}
 }

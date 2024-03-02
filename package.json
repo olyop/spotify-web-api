@@ -1,7 +1,7 @@
 {
 	"type": "module",
 	"name": "@oly_op/spotify-web-api",
-	"version": "0.1.6",
+	"version": "0.1.7",
 	"description": "auth0-js like implementation for interacting with the Spotify WEB API",
 	"homepage": "https://github.com/olyop/spotify-web-api#readme",
 	"bugs": {

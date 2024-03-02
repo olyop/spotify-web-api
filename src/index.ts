@@ -94,7 +94,6 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		this.#deleteToken();
 
 		if (this.#storageProvider) {
-			this.#storageProvider.removeItem(this.#storageProvider.keys.token);
 			deletePKCEVerifier(this.#storageProvider);
 		}
 	}
@@ -130,15 +129,25 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 
 		const isJSON = data !== undefined && !(data instanceof URLSearchParams);
 
-		const request = new Request(url, { method, body: isJSON ? JSON.stringify(data) : null });
+		const body = isJSON ? JSON.stringify(data) : null;
+
+		const request = new Request(url, { method, body });
 
 		if (isJSON) {
 			request.headers.append("Content-Type", "application/json");
 		}
 
-		const token = await this.#getAccessToken();
+		let accessToken;
 
-		request.headers.append("Authorization", `Bearer ${token}`);
+		if (this.#token === null) {
+			accessToken = await this.#retrieveAccessToken();
+		} else if (this.#token.expiresAt < Date.now()) {
+			accessToken = await this.#retreiveRefreshToken();
+		} else {
+			accessToken = this.#token.accessToken;
+		}
+
+		request.headers.append("Authorization", `Bearer ${accessToken}`);
 
 		const response = await fetch(request, { signal: this.#abortController.signal });
 
@@ -199,20 +208,6 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		this.#OPTIONS.onAuthenticatedChange?.(true);
 
 		this.isLoading = false;
-	}
-
-	async #getAccessToken() {
-		let accessToken: string;
-
-		if (this.#token === null) {
-			accessToken = await this.#retrieveAccessToken();
-		} else if (this.#token.expiresAt < Date.now()) {
-			accessToken = await this.#retreiveRefreshToken();
-		} else {
-			accessToken = this.#token.accessToken;
-		}
-
-		return accessToken;
 	}
 
 	async #retrieveAccessToken() {

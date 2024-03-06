@@ -25,6 +25,7 @@ export type SpotifyWebApiClientQuery = <T>(
 
 export interface SpotifyOptions extends SpotifyAuthorizationCodeOptions, SpotifyOAuthOptions, SpotifyHooksOptions {
 	storageProvider?: StorageProvider | null;
+	cacheProvider?: CacheProvider | null;
 }
 
 export interface SpotifyAuthorizationCodeOptions {
@@ -50,15 +51,6 @@ export interface SpotifyHooksOptions {
 export type SpotifyQueryHttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 export type SpotifyQueryRequestData = URLSearchParams | Record<string, unknown>;
 
-export interface StorageProvider {
-	getToken(): SpotifyToken | null;
-	getPKCEVerifier(): string | null;
-	setToken(token: SpotifyToken): void;
-	setPKCEVerifier(pkceVerifier: string): void;
-	removeToken(): void;
-	removePKCEVerifier(): void;
-}
-
 export interface StorageProviderKeys {
 	token: string;
 	pkceVerifier: string;
@@ -78,4 +70,19 @@ export interface SpotifyToken {
 	expiresAt: number;
 	refreshToken: string;
 	scope: string;
+}
+
+export interface StorageProvider {
+	getToken(): SpotifyToken | null;
+	getPKCEVerifier(): string | null;
+	setToken(token: SpotifyToken): void;
+	setPKCEVerifier(pkceVerifier: string): void;
+	removeToken(): void;
+	removePKCEVerifier(): void;
+}
+
+export interface CacheProvider {
+	get(key: string): Promise<string | null>;
+	set(key: string, value: string): Promise<string | null>;
+	remove(key: string): Promise<string | null>;
 }

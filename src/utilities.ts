@@ -1,5 +1,11 @@
 import { PKCE_VERIFIER_POSSIBLE_CHARACTERS, StorageProvider } from "./types";
 
+export function sleep(milliseconds: number) {
+	return new Promise(resolve => {
+		setTimeout(resolve, milliseconds);
+	});
+}
+
 export async function generatePKCEChallenge(storageProvider: StorageProvider) {
 	const codeVerifier = generateRandomString(128);
 	const codeChallenge = base64encode(await sha256(codeVerifier));

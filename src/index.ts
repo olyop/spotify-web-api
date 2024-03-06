@@ -1,6 +1,9 @@
-import { LocalStorageProvider } from "./local-storage";
+// eslint-disable-next-line unicorn/prevent-abbreviations
+import { IndexedDbProvider } from "./indexed-db-provider";
+import { LocalStorageProvider } from "./local-storage-provider";
 import {
 	AccessTokenResponse,
+	CacheProvider,
 	SpotifyAuthorizationCodeOptions,
 	SpotifyHooksOptions,
 	SpotifyOAuthConfiguration,
@@ -17,13 +20,14 @@ import {
 	StorageProvider,
 	StorageProviderKeys,
 } from "./types";
-import { deletePKCEVerifier, generatePKCEChallenge, retrievePKCEVerifier } from "./utilities";
+import { deletePKCEVerifier, generatePKCEChallenge, retrievePKCEVerifier, sleep } from "./utilities";
 
 export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	#OPTIONS: SpotifyOptions;
 
 	#abortController: AbortController;
 	#storageProvider: StorageProvider | null;
+	#cacheProvider: CacheProvider | null;
 
 	#token: SpotifyToken | null;
 	#isLoading: boolean;
@@ -33,9 +37,8 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		this.#OPTIONS = optionsInput;
 
 		this.#abortController = new AbortController();
-
-		this.#storageProvider =
-			optionsInput.storageProvider === undefined ? new LocalStorageProvider() : optionsInput.storageProvider;
+		this.#storageProvider = optionsInput.storageProvider ?? null;
+		this.#cacheProvider = optionsInput.cacheProvider ?? null;
 
 		this.#token = null;
 		this.#isLoading = false;
@@ -130,6 +133,14 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 			}
 		}
 
+		if (this.#cacheProvider !== null) {
+			const cached = await this.#cacheProvider.get(url.toString());
+
+			if (cached !== null) {
+				return JSON.parse(cached) as T;
+			}
+		}
+
 		const isJSON = data !== undefined && !(data instanceof URLSearchParams);
 
 		const body = isJSON ? JSON.stringify(data) : null;
@@ -153,7 +164,18 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		const response = await fetch(request, { signal: this.#abortController.signal });
 
 		if (!response.ok) {
-			throw new Error(response.statusText);
+			// check for rate limit
+			const retryAfterHeader = response.headers.get("Retry-After");
+
+			if (retryAfterHeader === null) {
+				throw new Error(`Failed to query: ${response.statusText}`);
+			} else {
+				const retryAfter = Number.parseInt(retryAfterHeader); // seconds
+
+				await sleep(retryAfter * 1000);
+
+				await this.query(method, path, data);
+			}
 		}
 
 		const text = await response.text();
@@ -280,7 +302,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	}
 }
 
-export { LocalStorageProvider };
+export { LocalStorageProvider, IndexedDbProvider };
 
 export type {
 	SpotifyToken,

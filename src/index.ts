@@ -10,12 +10,7 @@ import {
 	SpotifyOptions,
 	SpotifyQueryHttpMethod,
 	SpotifyToken,
-	SpotifyWebApiClientInter,
-	SpotifyWebApiClientLogInOut,
-	SpotifyWebApiClientMethods,
-	SpotifyWebApiClientQuery,
 	SpotifyWebApiClientQueryOptions,
-	SpotifyWebApiClientState,
 	StorageProvider,
 	StorageProviderKeys,
 } from "./types";
@@ -23,7 +18,7 @@ import { anySignal, deletePKCEVerifier, generatePKCEChallenge, retrievePKCEVerif
 
 export * from "spotify-types";
 
-export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
+export class SpotifyWebApiClient {
 	#OPTIONS: SpotifyOptions;
 
 	#abortController: AbortController;
@@ -103,8 +98,8 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 
 	setOptions(options: Partial<SpotifyOptions>) {
 		this.#OPTIONS = {
-			...this.#OPTIONS,
 			...options,
+			...this.#OPTIONS,
 		};
 	}
 
@@ -119,7 +114,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 
 		const isJSON = options?.body !== undefined;
 
-		if (this.#OPTIONS.cacheProvider && !isJSON) {
+		if (options?.cache && this.#OPTIONS.cacheProvider && !isJSON) {
 			const cached = await this.#OPTIONS.cacheProvider.get(url.toString());
 
 			if (cached !== null) {
@@ -191,12 +186,20 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		return JSON.parse(text) as T;
 	}
 
+	async clearCache() {
+		if (!this.#OPTIONS.cacheProvider) throw new Error("No cache provider found");
+
+		await this.#OPTIONS.cacheProvider.clear();
+	}
+
 	async #redirectToAuthCodeFlow() {
 		if (!this.#OPTIONS.storageProvider) throw new Error("No storage provider found");
 
 		const codeChallenge = await generatePKCEChallenge(this.#OPTIONS.storageProvider);
 
 		const url = new URL("https://accounts.spotify.com/authorize");
+
+		console.log(this.#OPTIONS);
 
 		url.searchParams.append("client_id", this.#OPTIONS.clientId);
 		url.searchParams.append("response_type", "code");
@@ -318,8 +321,4 @@ export type {
 	StorageProvider,
 	StorageProviderKeys,
 	SpotifyWebApiClientQueryOptions,
-	SpotifyWebApiClientLogInOut,
-	SpotifyWebApiClientMethods,
-	SpotifyWebApiClientQuery,
-	SpotifyWebApiClientState,
 };

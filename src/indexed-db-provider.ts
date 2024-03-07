@@ -97,4 +97,26 @@ export class IndexedDbProvider implements CacheProvider {
 			});
 		});
 	}
+
+	clear() {
+		return new Promise<void>(resolve => {
+			if (this.#database === null) {
+				resolve();
+				return;
+			}
+
+			const transaction = this.#database.transaction(this.#storeName, "readwrite");
+			const store = transaction.objectStore(this.#storeName);
+
+			store.clear();
+
+			transaction.addEventListener("error", () => {
+				resolve();
+			});
+
+			transaction.addEventListener("complete", () => {
+				resolve();
+			});
+		});
+	}
 }

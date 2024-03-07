@@ -3,6 +3,7 @@ import { IndexedDbProvider } from "./indexed-db-provider";
 import { LocalStorageProvider } from "./local-storage-provider";
 import {
 	AccessTokenResponse,
+	CacheProvider,
 	SpotifyAuthorizationCodeOptions,
 	SpotifyHooksOptions,
 	SpotifyOAuthConfiguration,
@@ -10,7 +11,12 @@ import {
 	SpotifyOptions,
 	SpotifyQueryHttpMethod,
 	SpotifyToken,
+	SpotifyWebApiClientInter,
+	SpotifyWebApiClientLogInOut,
+	SpotifyWebApiClientMethods,
+	SpotifyWebApiClientQuery,
 	SpotifyWebApiClientQueryOptions,
+	SpotifyWebApiClientState,
 	StorageProvider,
 	StorageProviderKeys,
 } from "./types";
@@ -311,14 +317,20 @@ export class SpotifyWebApiClient {
 export { LocalStorageProvider, IndexedDbProvider };
 
 export type {
-	SpotifyToken,
-	SpotifyHooksOptions,
+	CacheProvider,
 	SpotifyAuthorizationCodeOptions,
+	SpotifyHooksOptions,
 	SpotifyOAuthConfiguration,
 	SpotifyOAuthOptions,
 	SpotifyOptions,
 	SpotifyQueryHttpMethod,
+	SpotifyToken,
+	SpotifyWebApiClientInter,
+	SpotifyWebApiClientLogInOut,
+	SpotifyWebApiClientMethods,
+	SpotifyWebApiClientQuery,
+	SpotifyWebApiClientQueryOptions,
+	SpotifyWebApiClientState,
 	StorageProvider,
 	StorageProviderKeys,
-	SpotifyWebApiClientQueryOptions,
 };

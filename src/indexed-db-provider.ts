@@ -5,13 +5,21 @@ export class IndexedDbProvider implements CacheProvider {
 	#database: IDBDatabase | null = null;
 	#storeName: string;
 
-	constructor(databaseName: string, storeName: string) {
-		this.#storeName = storeName;
-
-		this.#openDatabase(databaseName, storeName);
+	get isOpen() {
+		return this.#database !== null;
 	}
 
-	#openDatabase(databaseName: string, storeName: string) {
+	constructor(databaseName: string, storeName: string, onReady?: () => void) {
+		this.#storeName = storeName;
+
+		void this.#initialize(databaseName, storeName, onReady);
+	}
+
+	async #initialize(databaseName: string, storeName: string, onReady?: () => void) {
+		const permission = await navigator.storage.persist();
+
+		if (!permission) return;
+
 		const query = indexedDB.open(databaseName);
 
 		query.addEventListener("error", () => {
@@ -24,6 +32,7 @@ export class IndexedDbProvider implements CacheProvider {
 
 		query.addEventListener("success", () => {
 			this.#database = query.result;
+			onReady?.();
 		});
 	}
 

@@ -97,10 +97,6 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		}
 	}
 
-	static isLoadingInitial(authorizationCode: string | null) {
-		return authorizationCode !== null;
-	}
-
 	static isAuthenticatedInitial(storageProvider: StorageProvider) {
 		return storageProvider.getToken() !== null;
 	}

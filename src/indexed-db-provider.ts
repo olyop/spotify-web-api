@@ -16,9 +16,7 @@ export class IndexedDbProvider implements CacheProvider {
 	}
 
 	async #initialize(databaseName: string, storeName: string, onReady?: () => void) {
-		const permission = await navigator.storage.persist();
-
-		if (!permission) return;
+		await navigator.storage.persist();
 
 		const query = indexedDB.open(databaseName);
 
@@ -59,6 +57,8 @@ export class IndexedDbProvider implements CacheProvider {
 	}
 
 	async set(key: string, value: string) {
+		await navigator.storage.persist();
+
 		return new Promise<string | null>(resolve => {
 			if (this.#database === null) {
 				resolve(null);

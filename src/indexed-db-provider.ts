@@ -26,6 +26,7 @@ export class IndexedDbProvider implements CacheProvider {
 			this.#database = query.result;
 		});
 	}
+
 	get(key: string) {
 		return new Promise<string | null>(resolve => {
 			if (this.#database === null) {

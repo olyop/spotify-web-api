@@ -4,7 +4,6 @@ export interface SpotifyWebApiClientInter extends SpotifyWebApiClientState, Spot
 
 export interface SpotifyWebApiClientState {
 	isAuthenticated: boolean;
-	isLoading: boolean;
 	error: Error | null;
 }
 
@@ -20,16 +19,17 @@ export interface SpotifyWebApiClientLogInOut {
 export type SpotifyWebApiClientQuery = <T>(
 	method: SpotifyQueryHttpMethod,
 	path: string,
-	data?: SpotifyQueryRequestData,
+	options?: SpotifyWebApiClientQueryOptions,
 ) => Promise<T>;
 
 export interface SpotifyOptions extends SpotifyAuthorizationCodeOptions, SpotifyOAuthOptions, SpotifyHooksOptions {
+	shouldAutoLogin?: boolean;
 	storageProvider?: StorageProvider | null;
 	cacheProvider?: CacheProvider | null;
 }
 
 export interface SpotifyAuthorizationCodeOptions {
-	authorizationCode: string | null;
+	authorizationCode?: string | null;
 }
 
 export interface SpotifyOAuthOptions extends SpotifyOAuthConfiguration {
@@ -43,13 +43,17 @@ export interface SpotifyOAuthConfiguration {
 }
 
 export interface SpotifyHooksOptions {
-	onLoadingChange?: (isLoading: boolean) => void;
 	onAuthenticatedChange?: (isAuthenticated: boolean) => void;
 	onErrorChange?: (error: Error) => void;
 }
 
 export type SpotifyQueryHttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
-export type SpotifyQueryRequestData = URLSearchParams | Record<string, unknown>;
+
+export interface SpotifyWebApiClientQueryOptions {
+	searchParams?: URLSearchParams;
+	body?: Record<string, unknown> | null;
+	signal?: AbortSignal;
+}
 
 export interface StorageProviderKeys {
 	token: string;

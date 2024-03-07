@@ -3,76 +3,59 @@ import { IndexedDbProvider } from "./indexed-db-provider";
 import { LocalStorageProvider } from "./local-storage-provider";
 import {
 	AccessTokenResponse,
-	CacheProvider,
 	SpotifyAuthorizationCodeOptions,
 	SpotifyHooksOptions,
 	SpotifyOAuthConfiguration,
 	SpotifyOAuthOptions,
 	SpotifyOptions,
 	SpotifyQueryHttpMethod,
-	SpotifyQueryRequestData,
 	SpotifyToken,
 	SpotifyWebApiClientInter,
 	SpotifyWebApiClientLogInOut,
 	SpotifyWebApiClientMethods,
 	SpotifyWebApiClientQuery,
+	SpotifyWebApiClientQueryOptions,
 	SpotifyWebApiClientState,
 	StorageProvider,
 	StorageProviderKeys,
 } from "./types";
-import { deletePKCEVerifier, generatePKCEChallenge, retrievePKCEVerifier, sleep } from "./utilities";
+import { anySignal, deletePKCEVerifier, generatePKCEChallenge, retrievePKCEVerifier, sleep } from "./utilities";
 
 export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	#OPTIONS: SpotifyOptions;
 
 	#abortController: AbortController;
-	#storageProvider: StorageProvider | null;
-	#cacheProvider: CacheProvider | null;
 
 	#token: SpotifyToken | null;
-	#isLoading: boolean;
 	#error: Error | null;
 
 	constructor(optionsInput: SpotifyOptions) {
 		this.#OPTIONS = optionsInput;
 
 		this.#abortController = new AbortController();
-		this.#storageProvider = optionsInput.storageProvider ?? null;
-		this.#cacheProvider = optionsInput.cacheProvider ?? null;
 
 		this.#token = null;
-		this.#isLoading = false;
 		this.#error = null;
 
-		if (this.#storageProvider !== null) {
-			this.#token = this.#storageProvider.getToken();
+		if (this.#OPTIONS.token) {
+			this.#token = this.#OPTIONS.token;
+		} else if (this.#OPTIONS.storageProvider) {
+			this.#token = this.#OPTIONS.storageProvider.getToken();
 
-			const { authorizationCode } = optionsInput;
-			const codeVerifier = retrievePKCEVerifier(this.#storageProvider);
+			if (this.#OPTIONS.shouldAutoLogin && (this.#token === null || this.#token.expiresAt < Date.now())) {
+				if (!this.#OPTIONS.authorizationCode) throw new Error("No authorization code found");
 
-			if (codeVerifier && authorizationCode) {
-				this.#isLoading = true;
+				const codeVerifier = retrievePKCEVerifier(this.#OPTIONS.storageProvider);
 
-				void this.#initialRetrieveAccessToken(codeVerifier, authorizationCode);
+				if (!codeVerifier) throw new Error("No code verifier found");
+
+				void this.#initialRetrieveAccessToken(codeVerifier, this.#OPTIONS.authorizationCode);
 			}
-		}
-
-		if (optionsInput.token) {
-			this.#token = optionsInput.token;
 		}
 	}
 
 	get isAuthenticated() {
 		return this.#token !== null;
-	}
-
-	get isLoading() {
-		return this.#isLoading;
-	}
-
-	set isLoading(isLoading: boolean) {
-		this.#isLoading = isLoading;
-		this.#OPTIONS.onLoadingChange?.(isLoading);
 	}
 
 	get error() {
@@ -94,8 +77,8 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 
 		this.#deleteToken();
 
-		if (this.#storageProvider) {
-			deletePKCEVerifier(this.#storageProvider);
+		if (this.#OPTIONS.storageProvider) {
+			deletePKCEVerifier(this.#OPTIONS.storageProvider);
 		}
 	}
 
@@ -105,11 +88,10 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		this.#abortController = new AbortController();
 
 		this.#token = null;
-		this.#isLoading = false;
 		this.#error = null;
 
-		if (this.#storageProvider) {
-			this.#token = this.#storageProvider.getToken();
+		if (this.#OPTIONS.storageProvider) {
+			this.#token = this.#OPTIONS.storageProvider.getToken();
 		}
 	}
 
@@ -121,29 +103,33 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		return storageProvider.getToken() !== null;
 	}
 
-	async query<T>(method: SpotifyQueryHttpMethod, path: string, data?: SpotifyQueryRequestData) {
-		if (!this.isAuthenticated) throw new Error("Not authenticated");
-		if (this.#token === null) throw new Error("No token found");
+	setOptions(options: SpotifyOptions) {
+		this.#OPTIONS = {
+			...this.#OPTIONS,
+			...options,
+		};
+	}
 
+	async query<T>(method: SpotifyQueryHttpMethod, path: string, options?: SpotifyWebApiClientQueryOptions): Promise<T> {
 		const url = new URL(`https://api.spotify.com/v1/${path}`);
 
-		if (data instanceof URLSearchParams) {
-			for (const [key, value] of data) {
+		if (options?.searchParams) {
+			for (const [key, value] of options.searchParams) {
 				url.searchParams.append(key, value);
 			}
 		}
 
-		if (this.#cacheProvider !== null) {
-			const cached = await this.#cacheProvider.get(url.toString());
+		const isJSON = options?.body !== undefined;
+
+		if (this.#OPTIONS.cacheProvider && !isJSON) {
+			const cached = await this.#OPTIONS.cacheProvider.get(url.toString());
 
 			if (cached !== null) {
 				return JSON.parse(cached) as T;
 			}
 		}
 
-		const isJSON = data !== undefined && !(data instanceof URLSearchParams);
-
-		const body = isJSON ? JSON.stringify(data) : null;
+		const body = isJSON ? JSON.stringify(options.body) : null;
 
 		const request = new Request(url, { method, body });
 
@@ -151,17 +137,36 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 			request.headers.append("Content-Type", "application/json");
 		}
 
-		let { accessToken } = this.#token;
+		const signals: AbortSignal[] = [this.#abortController.signal];
 
-		if (this.#token.expiresAt < Date.now()) {
-			accessToken = await this.#retreiveRefreshToken();
+		if (options?.signal) {
+			signals.push(options.signal);
+		}
+
+		const signal = anySignal(signals);
+
+		let accessToken: string;
+
+		if (this.#token) {
+			if (this.#token.expiresAt < Date.now()) {
+				accessToken = await this.#retreiveRefreshToken(signal);
+			} else {
+				accessToken = this.#token.accessToken;
+			}
 		} else {
-			accessToken = this.#token.accessToken;
+			if (!this.#OPTIONS.storageProvider) throw new Error("No storage provider found");
+			if (!this.#OPTIONS.authorizationCode) throw new Error("No authorization code found");
+
+			const codeVerifier = retrievePKCEVerifier(this.#OPTIONS.storageProvider);
+
+			if (!codeVerifier) throw new Error("No code verifier found");
+
+			accessToken = await this.#initialRetrieveAccessToken(codeVerifier, this.#OPTIONS.authorizationCode);
 		}
 
 		request.headers.append("Authorization", `Bearer ${accessToken}`);
 
-		const response = await fetch(request, { signal: this.#abortController.signal });
+		const response = await fetch(request, { signal });
 
 		if (!response.ok) {
 			// check for rate limit
@@ -169,29 +174,29 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 
 			if (retryAfterHeader === null) {
 				throw new Error(`Failed to query: ${response.statusText}`);
-			} else {
-				const retryAfter = Number.parseInt(retryAfterHeader); // seconds
-
-				await sleep(retryAfter * 1000);
-
-				await this.query(method, path, data);
 			}
+
+			const retryAfter = Number.parseInt(retryAfterHeader); // seconds
+
+			await sleep(retryAfter * 1000);
+
+			return this.query<T>(method, path, options);
 		}
 
 		const text = await response.text();
 
 		// check if has content
 		if (text.length === 0) {
-			return text as unknown as T;
+			throw new Error("No content");
 		}
 
 		return JSON.parse(text) as T;
 	}
 
 	async #redirectToAuthCodeFlow() {
-		if (this.#storageProvider === null) throw new Error("No storage provider found");
+		if (!this.#OPTIONS.storageProvider) throw new Error("No storage provider found");
 
-		const codeChallenge = await generatePKCEChallenge(this.#storageProvider);
+		const codeChallenge = await generatePKCEChallenge(this.#OPTIONS.storageProvider);
 
 		const url = new URL("https://accounts.spotify.com/authorize");
 
@@ -206,11 +211,11 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	}
 
 	async #initialRetrieveAccessToken(codeVerifier: string, authorizationCode: string) {
-		await this.#retrieveAccessToken(codeVerifier, authorizationCode);
+		const accessToken = await this.#retrieveAccessToken(codeVerifier, authorizationCode);
 
 		this.#OPTIONS.onAuthenticatedChange?.(true);
 
-		this.isLoading = false;
+		return accessToken;
 	}
 
 	async #retrieveAccessToken(codeVerifier: string, authorizationCode: string) {
@@ -241,7 +246,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		return token.accessToken;
 	}
 
-	async #retreiveRefreshToken() {
+	async #retreiveRefreshToken(signal: AbortSignal) {
 		if (this.#token === null) throw new Error("No token found");
 
 		const url = new URL("https://accounts.spotify.com/api/token");
@@ -256,7 +261,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 
 		request.headers.append("Content-Type", "application/x-www-form-urlencoded");
 
-		const response = await fetch(request, { signal: this.#abortController.signal });
+		const response = await fetch(request, { signal });
 
 		if (!response.ok) {
 			throw new Error(`Failed to refresh access token: ${response.statusText}`);
@@ -288,7 +293,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	#setToken(token: SpotifyToken) {
 		this.#token = token;
 
-		this.#storageProvider?.setToken(token);
+		this.#OPTIONS.storageProvider?.setToken(token);
 
 		this.#OPTIONS.onAuthenticatedChange?.(true);
 	}
@@ -296,7 +301,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	#deleteToken() {
 		this.#token = null;
 
-		this.#storageProvider?.removeToken();
+		this.#OPTIONS.storageProvider?.removeToken();
 
 		this.#OPTIONS.onAuthenticatedChange?.(false);
 	}
@@ -314,7 +319,7 @@ export type {
 	SpotifyQueryHttpMethod,
 	StorageProvider,
 	StorageProviderKeys,
-	SpotifyQueryRequestData,
+	SpotifyWebApiClientQueryOptions,
 	SpotifyWebApiClientLogInOut,
 	SpotifyWebApiClientMethods,
 	SpotifyWebApiClientQuery,

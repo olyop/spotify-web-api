@@ -6,6 +6,30 @@ export function sleep(milliseconds: number) {
 	});
 }
 
+export function anySignal(signals: AbortSignal[]) {
+	const controller = new AbortController();
+
+	function onAbort() {
+		controller.abort();
+
+		// Cleanup
+		for (const signal of signals) {
+			signal.removeEventListener("abort", onAbort);
+		}
+	}
+
+	for (const signal of signals) {
+		if (signal.aborted) {
+			onAbort();
+			break;
+		}
+
+		signal.addEventListener("abort", onAbort);
+	}
+
+	return controller.signal;
+}
+
 export async function generatePKCEChallenge(storageProvider: StorageProvider) {
 	const codeVerifier = generateRandomString(128);
 	const codeChallenge = base64encode(await sha256(codeVerifier));

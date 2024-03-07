@@ -33,7 +33,7 @@ export class SpotifyWebApiClient {
 	#error: Error | null;
 
 	constructor(optionsInput: SpotifyOptions) {
-		this.#OPTIONS = optionsInput;
+		this.#OPTIONS = { ...optionsInput };
 
 		this.#abortController = new AbortController();
 
@@ -104,8 +104,8 @@ export class SpotifyWebApiClient {
 
 	setOptions(options: Partial<SpotifyOptions>) {
 		this.#OPTIONS = {
-			...options,
 			...this.#OPTIONS,
+			...options,
 		};
 	}
 

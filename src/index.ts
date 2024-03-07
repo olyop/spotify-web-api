@@ -21,6 +21,8 @@ import {
 } from "./types";
 import { anySignal, deletePKCEVerifier, generatePKCEChallenge, retrievePKCEVerifier, sleep } from "./utilities";
 
+export * from "./spotify-types";
+
 export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 	#OPTIONS: SpotifyOptions;
 

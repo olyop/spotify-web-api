@@ -1,5 +1,28 @@
 export const PKCE_VERIFIER_POSSIBLE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
+export interface SpotifyWebApiClientInter extends SpotifyWebApiClientState, SpotifyWebApiClientMethods {}
+
+export interface SpotifyWebApiClientState {
+	isAuthenticated: boolean;
+	error: Error | null;
+}
+
+export interface SpotifyWebApiClientMethods extends SpotifyWebApiClientLogInOut {
+	query: SpotifyWebApiClientQuery;
+	clearCache: () => Promise<void>;
+}
+
+export interface SpotifyWebApiClientLogInOut {
+	login: () => void;
+	logout: () => void;
+}
+
+export type SpotifyWebApiClientQuery = <T>(
+	method: SpotifyQueryHttpMethod,
+	path: string,
+	options?: SpotifyWebApiClientQueryOptions,
+) => Promise<T>;
+
 export interface SpotifyOptions extends SpotifyAuthorizationCodeOptions, SpotifyOAuthOptions, SpotifyHooksOptions {
 	shouldAutoLogin?: boolean;
 	storageProvider?: StorageProvider | null;

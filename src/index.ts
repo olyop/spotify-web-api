@@ -101,7 +101,7 @@ export class SpotifyWebApiClient implements SpotifyWebApiClientInter {
 		return storageProvider.getToken() !== null;
 	}
 
-	setOptions(options: SpotifyOptions) {
+	setOptions(options: Partial<SpotifyOptions>) {
 		this.#OPTIONS = {
 			...this.#OPTIONS,
 			...options,
